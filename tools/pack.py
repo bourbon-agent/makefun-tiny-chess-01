@@ -52,8 +52,22 @@ def roundtrip(latin1_text: str, expect: bytes) -> bool:
     return bool(lits) and lzma.decompress(lits[0].encode("latin-1")) == expect
 
 
+class _StripDocstrings(ast.NodeTransformer):
+    def _strip(self, node):
+        body = node.body
+        while body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+            body = body[1:]
+        node.body = body
+        return self.generic_visit(node)
+
+    visit_Module = visit_FunctionDef = visit_ClassDef = _strip
+
+
 def main() -> None:
     src = SRC.read_bytes()
+    tree = ast.parse(src)
+    tree = _StripDocstrings().visit(tree)
+    src = ast.unparse(tree).encode()  # canonical minimal whitespace for the payload
     data = pack(src)
     text = data.decode("latin-1")
     if not roundtrip(text, src):
