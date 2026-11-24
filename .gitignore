@@ -1,1 +1,4 @@
 main_src.py
+
+__pycache__/
+*.pyc
